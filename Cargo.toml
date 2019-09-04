@@ -1,0 +1,6 @@
+[package]
+name = "rapidsockets"
+version = "0.0.1"
+authors = ["RapidSockets <support@rapidsockets.com>"]
+
+[dependencies]
