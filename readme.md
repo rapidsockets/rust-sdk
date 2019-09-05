@@ -10,8 +10,10 @@ cargo install rapidsockets
 
 ### Usage
 ```rust
-let mut rs = rapidsockets::Client::init();
-rs.set_key("your key");
+let mut config = rapidsockets::Config::init();
+config.set_key("your key");
+
+let mut rs = rapidsockets::Client::connect(config);
 
 fn user_demo(packet: String) {
     println!("{}", packet);
