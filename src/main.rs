@@ -3,10 +3,15 @@ extern crate tokio;
 
 mod rapidsockets {
 
+    use std::thread;
     use websocket::ClientBuilder;
     use websocket::Message as WsMessage;
+    use websocket::OwnedMessage;
+    use websocket::OwnedMessage::Text;
     use websocket::client::sync::Client as WsClient;
     use websocket::stream::sync::NetworkStream;
+    use websocket::stream::sync::TlsStream;
+    use websocket::stream::sync::TcpStream;
 
     fn noop(_: String) {}
 
@@ -41,7 +46,7 @@ mod rapidsockets {
     }
 
     pub struct Client<'a> {
-        connection: WsClient<Box<NetworkStream + Send>>,
+        config: Config,
         authenticated: bool,
         session: String,
         packet_queue: Vec<String>,
@@ -51,12 +56,9 @@ mod rapidsockets {
 
     impl<'a> Client<'a> {
 
-        pub fn connect(config: Config) -> Client<'a> {
+        pub fn init(config: Config) -> Client<'a> {
             Client {
-                connection: ClientBuilder::new(&config.gateway)
-                    .unwrap()
-                    .connect(None)
-                    .unwrap(),
+                config: config,
                 authenticated: false,
                 session: "".to_string(),
                 packet_queue: Vec::new(),
@@ -65,9 +67,32 @@ mod rapidsockets {
             }
         }
 
-        pub fn test(&mut self) {
-            let message = WsMessage::text("test");
-            self.connection.send_message(&message).unwrap();
+        pub fn connect(&self) {
+            let mut conn = ClientBuilder::new(&self.config.gateway)
+                .unwrap()
+                .connect(None)
+                .unwrap();
+
+            let recv = thread::spawn(move || {
+                loop {
+                    println!("@@@@@@@@@@@@@@");
+                    match conn.recv_message() {
+                        Ok(m) => {
+                            match m {
+                                Text(message) => {
+                                    println!("{:?}", message);
+                                },
+                                _ => {
+                                    println!("{:?}", m);
+                                }
+                            }
+                        },
+                        _ => {}
+                    }
+                }
+            });
+
+            let _ = recv.join();
         }
 
     }
@@ -140,8 +165,8 @@ fn main() {
     config.set_api("http://127.0.0.1:2008");
     config.set_key("mul-f75b9b5c-7b50-47ac-b937-c1909242d0ce");
 
-    let mut rs = rapidsockets::Client::connect(config);
-    rs.test();
+    let rs = rapidsockets::Client::init(config);
+    rs.connect();
 
     fn user_demo(packet: String) {
         println!("{}", packet);
